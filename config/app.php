@@ -118,6 +118,9 @@ return [
     | will not be safe. Please do this before deploying an application!
     |
     */
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+    ],
 
     'key' => env('APP_KEY'),
 

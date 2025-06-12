@@ -61,6 +61,10 @@
                                                             class="btn btn-primary btn-sm">Update</a>
                                                         <a href="{{ url('admin/delete_question/' . $question['id']) }}"
                                                             class="btn btn-danger btn-sm">Delete</a>
+                                                        @if ($question['audio_file'] != null)
+                                                            <a href="{{ url('admin/show_audio_question/' . $question['id']) }}"
+                                                                class="btn bg-green btn-sm">show audio</a>
+                                                        @endif
                                                     </td>
                                                 </tr>
                                             @endforeach
@@ -156,7 +160,7 @@
                                 </div>
                                 <div class="form-group col-sm-6">
                                     <div class="flex flex-row justify-between items-center w-full">
-                                        <label for="">Upload Audio</label>
+                                        <label>Upload Audio</label>
                                         <div>
                                             <input type="file" name="audio" accept="audio/mpeg" id="audio_input"
                                                 class="form-control" onchange="previewFile()">
@@ -166,6 +170,9 @@
 
                                 <div class="display-none mt-3 p-2"id="audio_input_wrapper">
                                     <audio id="audio_preview" controls style="width: 100%; display: none;"></audio>
+                                </div>
+                                <div class="py-2" id="recommendation" x-text="showRecommendation" class="ml-2">
+
                                 </div>
 
                                 <div class="col-sm-12">
@@ -189,17 +196,19 @@
                 const file = document.getElementById("audio_input").files[0];
                 const maxSize = 10 * 1024 * 1024; // 10 MB
 
+                const preview = document.getElementById("audio_preview");
+                const wrapper = document.getElementById("audio_input_wrapper");
+                const recommendationBox = document.getElementById("recommendation");
+
+                if (!file) return;
+
                 if (file.size > maxSize) {
                     alert("Die Datei ist zu groß. Maximal erlaubt: 10MB.");
                     document.getElementById("audio_input").value = "";
                     return;
                 }
-                console.log(file.type);
 
-
-                const preview = document.getElementById("audio_preview");
-                const wrapper = document.getElementById("audio_input_wrapper");
-
+                // Preview the audio
                 if (file && file.type.startsWith('audio/')) {
                     const reader = new FileReader();
 
@@ -213,6 +222,38 @@
                     };
 
                     reader.readAsDataURL(file);
+
+                    // Transcribe via Whisper API
+                    const formData = new FormData();
+                    formData.append("audio", file);
+
+                    fetch("/admin/transcribe-audio", {
+                            method: "POST",
+                            headers: {
+                                "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
+                            },
+                            body: formData
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.text) {
+                                recommendationBox.innerHTML = `<strong>Recommendation:</strong> ${data.text}`;
+                                const optionNames = ['option_1', 'option_2', 'option_3', 'option_4'];
+                                const randomIndex = Math.floor(Math.random() * optionNames.length);
+                                const selectedOptionName = optionNames[randomIndex];
+                                const optionInput = document.querySelector(`input[name="${selectedOptionName}"]`);
+                                if (optionInput && !optionInput.value) {
+                                    optionInput.value = data.text;
+                                }
+                            } else {
+                                recommendationBox.innerHTML = "No recommendation could be generated.";
+                            }
+
+                        })
+                        .catch(err => {
+                            console.error("Transcription failed:", err);
+                            recommendationBox.innerHTML;
+                        });
                 }
             }
         </script>

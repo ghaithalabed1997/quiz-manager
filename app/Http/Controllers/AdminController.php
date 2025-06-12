@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Session;
 use App\Models\user_exam;
 use App\Models\Admin;
 use App\Models\Oex_result;
+use Illuminate\Support\Facades\Http;
 
 class AdminController extends Controller
 {
@@ -411,6 +412,59 @@ class AdminController extends Controller
     }
 
 
+    //Show audio question
+    public function transcribeUploadedAudio(Request $request)
+    {
+        $request->validate([
+            'audio' => 'required|file|mimes:mp3,wav,m4a,flac,ogg|max:10240' // max 10MB
+        ]);
+
+        $file = $request->file('audio');
+        $response = Http::attach(
+            'audio',
+            fopen($file->getRealPath(), 'r'),
+            $file->getClientOriginalName()
+        )->post('http://localhost:5005/transcribe'); // Or OpenAI API
+
+        if ($response->failed()) {
+            return response()->json([
+                'error' => 'Transcription failed.',
+                'details' => $response->body()
+            ], $response->status());
+        }
+
+        return response()->json([
+            'text' => $response->json()['text'] ?? null
+        ]);
+    }
+
+    //Get audio recommendation
+    public function getAudioRecommendation($id)
+    {
+        $question = Oex_question_master::findOrFail($id);
+
+        if ($question->audio_path) {
+            $localPath = storage_path('app/public/' . $question->audio_path);
+
+            if (!file_exists($localPath)) {
+                return response()->json(['error' => 'Audio file not found'], 404);
+            }
+
+            $response = Http::attach(
+                'audio',
+                fopen($localPath, 'r'),
+                basename($localPath)
+            )
+                ->post('http://localhost:5005/transcribe');
+
+            if ($response->failed()) {
+                return response()->json(['error' => $response->body()], $response->status());
+            }
+            return $response->json();
+        } else {
+            return response()->json(['error' => 'No audio file associated with this question.'], 400);
+        }
+    }
 
     //update questions
     public function update_question($id)
