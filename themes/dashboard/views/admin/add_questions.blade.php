@@ -61,10 +61,6 @@
                                                             class="btn btn-primary btn-sm">Update</a>
                                                         <a href="{{ url('admin/delete_question/' . $question['id']) }}"
                                                             class="btn btn-danger btn-sm">Delete</a>
-                                                        @if ($question['audio_file'] != null)
-                                                            <a href="{{ url('admin/show_audio_question/' . $question['id']) }}"
-                                                                class="btn bg-green btn-sm">show audio</a>
-                                                        @endif
                                                     </td>
                                                 </tr>
                                             @endforeach
